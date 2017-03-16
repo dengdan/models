@@ -38,6 +38,7 @@ DECAY_RATE = pow(0.5, 1.0 / DECAY_STEPS_FACTOR)
 
 
 def Train(train_dir,
+          model_str,
           train_data,
           max_steps,
           master='',
@@ -75,7 +76,7 @@ def Train(train_dir,
   with tf.Graph().as_default():
     with tf.device(device):
 
-      model = InitNetwork(train_data, 'train', initial_learning_rate,
+      model = InitNetwork(train_data, model_str, 'train', initial_learning_rate,
                           final_learning_rate, learning_rate_halflife,
                           optimizer_type, num_preprocess_threads, reader)
 

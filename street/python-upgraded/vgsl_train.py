@@ -22,6 +22,11 @@ setproctitle.setproctitle('fsns')
 flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
 flags.DEFINE_string('train_dir', '/tmp/mdir',
                     'Directory where to write event logs.')
+flags.DEFINE_string('model_str',
+                    '1,150,600,3[S2(4x150)0,2 Ct5,5,16 Mp2,2 Ct5,5,64 Mp3,3'
+                    '([Lrys64 Lbx128][Lbys64 Lbx128][Lfys64 Lbx128])S3(3x0)2,3'
+                    'Lfx128 Lrx128 S0(1x4)0,3 Do Lfx256]O1c134',
+                    'Network description.')
 flags.DEFINE_integer('max_steps', 10000, 'Number of steps to train for.')
 flags.DEFINE_integer('task', 0, 'Task id of the replica running the training.')
 flags.DEFINE_integer('ps_tasks', 0, 'Number of tasks in the ps job.'
@@ -40,7 +45,7 @@ FLAGS = flags.FLAGS
 
 def main(argv):
   del argv
-  vgsl_model.Train(FLAGS.train_dir, FLAGS.train_data,
+  vgsl_model.Train(FLAGS.train_dir, FLAGS.model_str, FLAGS.train_data,
                    FLAGS.max_steps, FLAGS.master, FLAGS.task, FLAGS.ps_tasks,
                    FLAGS.initial_learning_rate, FLAGS.final_learning_rate,
                    FLAGS.learning_rate_halflife, FLAGS.optimizer_type,
