@@ -306,8 +306,6 @@ class VGSLImageModel(object):
       reader: Function that returns an actual reader to read Examples from input
         files. If None, uses tf.TFRecordReader().
     """
-    import pdb
-    pdb.set_trace();
     self.global_step = tf.Variable(0, name='global_step', trainable=False)
     shape = _ParseInputSpec(input_spec)
     out_dims, out_func, num_classes = _ParseOutputSpec(output_spec)

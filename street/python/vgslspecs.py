@@ -46,12 +46,7 @@ class VGSLSpecs(object):
     # Tensor for the size of the images, of size batch_size.
     self.widths = widths
     self.heights = heights
-    # Overall reduction factors of this model so far for each dimension.
-    # TODO(rays) consider building a graph from widths and heights instead of
-    # computing a scale factor.
     self.reduction_factors = [1.0, 1.0, 1.0, 1.0]
-    # List of Op parsers.
-    # TODO(rays) add more Op types as needed.
     self.valid_ops = [self.AddSeries, self.AddParallel, self.AddConvLayer,
                       self.AddMaxPool, self.AddDropout, self.AddReShape,
                       self.AddFCLayer, self.AddLSTMLayer]

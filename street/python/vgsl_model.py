@@ -111,7 +111,6 @@ def Train(train_dir,
 
 def Eval(train_dir,
          eval_dir,
-         model_str,
          eval_data,
          decoder_file,
          num_steps,
@@ -147,7 +146,7 @@ def Eval(train_dir,
       word_precision_error=None,
       sequence_error=None)
   with tf.Graph().as_default():
-    model = InitNetwork(eval_data, model_str, 'eval', reader=reader)
+    model = InitNetwork(eval_data, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
 
     while True:
@@ -182,7 +181,6 @@ def Eval(train_dir,
 
 
 def InitNetwork(input_pattern,
-                model_spec,
                 mode='eval',
                 initial_learning_rate=0.00005,
                 final_learning_rate=0.00005,
@@ -194,8 +192,6 @@ def InitNetwork(input_pattern,
 
   Args:
     input_pattern: File pattern of the data in tfrecords of Example.
-    model_spec: Concatenation of input spec, model spec and output spec.
-      See Build below for input/output spec. For model spec, see vgslspecs.py
     mode: One of 'train', 'eval'
     initial_learning_rate: Initial learning rate for the network.
     final_learning_rate: Final learning rate for the network.
@@ -213,17 +209,8 @@ def InitNetwork(input_pattern,
   Raises:
     ValueError: if the model spec syntax is incorrect.
   """
-  model = VGSLImageModel(mode, model_spec, initial_learning_rate,
-                         final_learning_rate, halflife)
-  left_bracket = model_spec.find('[')
-  right_bracket = model_spec.rfind(']')
-  if left_bracket < 0 or right_bracket < 0:
-    raise ValueError('Failed to find [] in model spec! ', model_spec)
-  input_spec = model_spec[:left_bracket]
-  layer_spec = model_spec[left_bracket:right_bracket + 1]
-  output_spec = model_spec[right_bracket + 1:]
-  model.Build(input_pattern, input_spec, layer_spec, output_spec,
-              optimizer_type, num_preprocess_threads, reader)
+  model = VGSLImageModel(mode, initial_learning_rate, final_learning_rate, halflife)
+  model.Build(input_pattern, optimizer_type, num_preprocess_threads, reader)
   return model
 
 
@@ -231,20 +218,16 @@ class VGSLImageModel(object):
   """Class that builds a tensor flow model for training or evaluation.
   """
 
-  def __init__(self, mode, model_spec, initial_learning_rate,
-               final_learning_rate, halflife):
+  def __init__(self, mode, initial_learning_rate, final_learning_rate, halflife):
     """Constructs a VGSLImageModel.
 
     Args:
       mode:        One of "train", "eval"
-      model_spec:  Full model specification string, for reference only.
       initial_learning_rate: Initial learning rate for the network.
       final_learning_rate: Final learning rate for the network.
       halflife: Number of steps over which to halve the difference between
                 initial and final learning rate for the network.
     """
-    # The string that was used to build this model.
-    self.model_spec = model_spec
     # The layers between input and output.
     self.layers = None
     # The train/eval mode.
@@ -268,56 +251,73 @@ class VGSLImageModel(object):
     # Tensor for the output predictions (usually softmax)
     self.output = None
     # True if we are using CTC training mode.
-    self.using_ctc = False
+    self.using_ctc = True
     # Saver object to load or restore the variables.
     self.saver = None
 
-  def Build(self, input_pattern, input_spec, model_spec, output_spec,
-            optimizer_type, num_preprocess_threads, reader):
-    """Builds the model from the separate input/layers/output spec strings.
+  def Build(self, input_pattern, optimizer_type, num_preprocess_threads, reader):
+    batch_size = 1
+    y_size = 150
+    x_size = 600
+    depth = 3
+    out_dims = 1
+    out_func = 'c'
+    num_classes = 134
 
-    Args:
-      input_pattern: File pattern of the data in tfrecords of TF Example format.
-      input_spec: Specification of the input layer:
-        batchsize,height,width,depth (4 comma-separated integers)
-          Training will run with batches of batchsize images, but runtime can
-          use any batch size.
-          height and/or width can be 0 or -1, indicating variable size,
-          otherwise all images must be the given size.
-          depth must be 1 or 3 to indicate greyscale or color.
-          NOTE 1-d image input, treating the y image dimension as depth, can
-          be achieved using S1(1x0)1,3 as the first op in the model_spec, but
-          the y-size of the input must then be fixed.
-      model_spec: Model definition. See vgslspecs.py
-      output_spec: Output layer definition:
-        O(2|1|0)(l|s|c)n output layer with n classes.
-          2 (heatmap) Output is a 2-d vector map of the input (possibly at
-            different scale).
-          1 (sequence) Output is a 1-d sequence of vector values.
-          0 (value) Output is a 0-d single vector value.
-          l uses a logistic non-linearity on the output, allowing multiple
-            hot elements in any output vector value.
-          s uses a softmax non-linearity, with one-hot output in each value.
-          c uses a softmax with CTC. Can only be used with s (sequence).
-          NOTE Only O1s and O1c are currently supported.
-      optimizer_type: One of 'GradientDescent', 'AdaGrad', 'Momentum', 'Adam'.
-      num_preprocess_threads: Number of threads to use for image processing.
-      reader: Function that returns an actual reader to read Examples from input
-        files. If None, uses tf.TFRecordReader().
-    """
-    import pdb
-    pdb.set_trace();
     self.global_step = tf.Variable(0, name='global_step', trainable=False)
-    shape = _ParseInputSpec(input_spec)
-    out_dims, out_func, num_classes = _ParseOutputSpec(output_spec)
+    shape = vgsl_input.ImageShape(batch_size, y_size, x_size, depth);
     self.using_ctc = out_func == 'c'
-    images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(
-        input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
+
+    images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
     self.labels = labels
     self.sparse_labels = sparse
-    self.layers = vgslspecs.VGSLSpecs(widths, heights, self.mode == 'train')
-    last_layer = self.layers.Build(images, model_spec)
-    self._AddOutputs(last_layer, out_dims, out_func, num_classes)
+    
+    
+    # reshape S2(4x150)0,2: 150x600x3 -> 4x150x150x3
+    reshaped_image = shapes.transposing_reshape(images, 2, 4, 150, 0, 2, name = "reshape_image_into_4");   
+    conv1 = slim.conv2d(reshaped_image, 16, [5, 5], activation_fn = tf.nn.relu, scope= "conv1");
+    pool1 = slim.max_pool2d(conv1, [2, 2], [2, 2],  padding='SAME',  scope="pool1");
+    conv2 = slim.conv2d(reshaped_image, 64, [5, 5], activation_fn = tf.nn.relu, scope= "conv2");
+    pool2 = slim.max_pool2d(conv2, [3, 3], [3, 3],  padding='SAME',  scope="pool2");
+    
+    # LSTM
+    ## Text Line finding
+    ### line1: Lrys64 Lbx128
+    line1_backward_y = self._LSTMLayer(pool2, direction = 'backward', dim = 'y', summarize = True, depth = 64, name = 'line1_backward_y');
+    line1_bi_x = self._LSTMLayer(line1_backward_y, direction = 'bidirectional', dim = 'x', summarize = False, depth = 128,  name = 'line1_bi_x');
+    
+    ### line2: [Lbys64 Lbx128]
+    line2_backward_y = self._LSTMLayer(pool2, direction = 'backward', dim = 'y', summarize = True, depth = 64, name = 'line2_backward_y');
+    line2_forward_y = self._LSTMLayer(pool2, direction = 'forward', dim = 'y', summarize = True, depth = 64, name = 'line2_forward_y');
+    line2_bi_y = tf.concat(axis=3, values=[line2_forward_y, line2_backward_y], name='line2_bi_y');
+    line2_bi_x = self._LSTMLayer(line2_bi_y, direction = 'bidirectional', dim = 'x', summarize = False, depth = 128, name = 'line2_bi_x');
+    
+    
+    ### line2: [Lfys64 Lbx128]
+    line3_forward_y = self._LSTMLayer(pool2, direction = 'forward', dim = 'y', summarize = True, depth = 64, name = 'line3_backward_y');
+    line3_bi_x = self._LSTMLayer(line3_forward_y, direction = 'bidirectional', dim = 'x', summarize = False, depth = 128,  name = 'line3_bi_x');
+    
+    ## reshape S3(3x0)2, 3
+    lines = tf.concat(axis = 3, values=[line1_bi_x, line2_bi_x, line3_bi_x]); # 4x1x25x768
+    reshaped_lines = shapes.transposing_reshape(lines, 3, 3, -1, 2, 3, name = "reshape_lines"); # 4x1x75x256
+    
+    ## Character Position Normalization
+    ###Lfx128
+    lines_norm_fx = self._LSTMLayer(reshaped_lines, direction = 'forward', dim = 'x', summarize = False, depth = 128, name = 'lines_norm_fx');
+    ###Lrx128
+    lines_norm_rx = self._LSTMLayer(lines_norm_fx, direction = 'backward', dim = 'x', summarize = False, depth = 128, name = 'lines_norm_rx'); #4x75x128
+    
+    ##S0(1x4)0,3
+    reshaped_lines_norm = shapes.transposing_reshape(lines_norm_rx, 0, 1, 4, 0, 3, name = "reshaped_lines_norm"); # 4x1x75x512
+    
+    ## Dropout
+    dropout = slim.dropout(reshaped_lines_norm, 0.5, is_training=self.is_training, scope="dropout")
+    
+    ## Lfx256
+    lstm_after_dropout = self._LSTMLayer(dropout, direction = 'forward', dim = 'x', summarize = True, depth = 256, name = 'lstm_after_dropout');
+    
+    ## output: O1c134
+    self._AddOutputs(lstm_after_dropout, out_dims, out_func, num_classes)
     if self.mode == 'train':
       self._AddOptimizer(optimizer_type)
 
@@ -537,55 +537,7 @@ def _PadLabels2d(logits_size, labels):
   return tf.cond(tf.greater(pad, 0), _PadFn, _SliceFn)
 
 
-def _ParseInputSpec(input_spec):
-  """Parses input_spec and returns the numbers obtained therefrom.
 
-  Args:
-    input_spec:  Specification of the input layer. See Build.
-
-  Returns:
-    shape:      ImageShape with the desired shape of the input.
-
-  Raises:
-    ValueError: if syntax is incorrect.
-  """
-  pattern = re.compile(R'(\d+),(\d+),(\d+),(\d+)')
-  m = pattern.match(input_spec)
-  if m is None:
-    raise ValueError('Failed to parse input spec:' + input_spec)
-  batch_size = int(m.group(1))
-  y_size = int(m.group(2)) if int(m.group(2)) > 0 else None
-  x_size = int(m.group(3)) if int(m.group(3)) > 0 else None
-  depth = int(m.group(4))
-  if depth not in [1, 3]:
-    raise ValueError('Depth must be 1 or 3, had:', depth)
-  return vgsl_input.ImageShape(batch_size, y_size, x_size, depth)
-
-
-def _ParseOutputSpec(output_spec):
-  """Parses the output spec.
-
-  Args:
-    output_spec: Output layer definition. See Build.
-
-  Returns:
-    out_dims:     2|1|0 for 2-d, 1-d, 0-d.
-    out_func:     l|s|c for logistic, softmax, softmax+CTC
-    num_classes:  Number of classes in output.
-
-  Raises:
-    ValueError: if syntax is incorrect.
-  """
-  pattern = re.compile(R'(O)(0|1|2)(l|s|c)(\d+)')
-  m = pattern.match(output_spec)
-  if m is None:
-    raise ValueError('Failed to parse output spec:' + output_spec)
-  out_dims = int(m.group(2))
-  out_func = m.group(3)
-  if out_func == 'c' and out_dims != 1:
-    raise ValueError('CTC can only be used with a 1-D sequence!')
-  num_classes = int(m.group(4))
-  return out_dims, out_func, num_classes
 
 
 def _AddRateToSummary(tag, rate, step, sw):

@@ -148,3 +148,14 @@ def _ImageProcessing(image_buffer, shape):
   image = tf.subtract(image, 128.0)
   image = tf.multiply(image, 1 / 100.0)
   return image
+  
+if __name__ == '__main__':
+    shape = ImageShape(1, 150, 600, 3)
+    input_pattern = '../data/fsns-00000-of-00001';
+    num_preprocess_threads = 1;
+    with tf.Session() as sess:
+        images, heights, widths, labels, sparse, _ = ImageInput(input_pattern, num_preprocess_threads, shape, True, None)
+        Is = sess.run([images]);
+        import pdb 
+        pdb.set_trace();
+        print Is.shape
