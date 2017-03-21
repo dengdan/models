@@ -6,18 +6,15 @@ train_dir=/tmp/fsns-debug
 rm -rf $train_dir
 pdb vgsl_train.py --max_steps=100000000 --train_data=../data/train* \
   --train_dir=$train_dir 
+
 exit
 tensorboard --logdir=$train_dir
-
-train_dir=/tmp/fsns
-rm -rf $train_dir
-
-
 python vgsl_train.py --max_steps=10000 --num_preprocess_threads=1 \
   --train_data=../data/fsns-00000-of-00001 \
   --initial_learning_rate=0.0001 --final_learning_rate=0.0001 \
   --train_dir=$train_dir 
 
+exit
 python vgsl_eval.py --num_steps=256 --num_preprocess_threads=1 \
    --eval_data=../data/fsns-00000-of-00001 \
    --decoder=../testdata/charset_size=134.txt \

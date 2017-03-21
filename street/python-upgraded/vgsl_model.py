@@ -321,7 +321,7 @@ class VGSLImageModel(object):
       self._AddOptimizer(optimizer_type)
 
     # For saving the model across training and evaluation
-    self.saver = tf.train.Saver()
+    self.saver = tf.train.Saver(max_to_keep=5)
 
   def TrainAStep(self, sess):
     """Runs a training step in the session.

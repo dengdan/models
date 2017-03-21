@@ -100,7 +100,10 @@ def Train(train_dir,
           # services: Checkpointing, Summaries, step counting.
           with sv.managed_session(master) as sess:
             while step < max_steps:
+              start = time.time()              
               loss_, step = model.TrainAStep(sess)
+              end = time.time()
+              print "Step %d, Loss = %f, %.3f seconds used."%(step, loss_, end - start)
               print "Step:", step, ", Loss =", loss_
               if sv.coord.should_stop():
                 break
@@ -266,13 +269,14 @@ class VGSLImageModel(object):
 
     self.global_step = tf.Variable(0, name='global_step', trainable=False)
     shape = vgsl_input.ImageShape(batch_size, y_size, x_size, depth);
-    self.using_ctc = out_func == 'c'
+    self.using_ctc = True
 
     images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
     self.labels = labels
     self.sparse_labels = sparse
     
-    
+    import pdb
+    pdb.set_trace()
     # reshape S2(4x150)0,2: 150x600x3 -> 4x150x150x3
     reshaped_image = shapes.transposing_reshape(images, 2, 4, 150, 0, 2, name = "reshape_image_into_4");   
     conv1 = slim.conv2d(reshaped_image, 16, [5, 5], activation_fn = tf.nn.relu, scope= "conv1");
