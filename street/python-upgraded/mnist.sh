@@ -1,11 +1,15 @@
 export LD_PRELOAD=/usr/lib/libtcmalloc.so.4
 export CUDA_VISIBLE_DEVICES=0
 
-cd python
-train_dir=/tmp/fsns-debug
-pdb vgsl_train.py --max_steps=100000000 --train_data=../data/train* \
-  --train_dir=$train_dir 
-exit
+
+train_dir=/tmp/fsns
+rm -rf $train_dir
+python vgsl_train.py --max_steps=100000000 --train_data=../data/train* \
+  --train_dir=$train_dir &
+python vgsl_eval.py --num_steps=1000 \
+  --eval_data=../data/validation* \
+  --decoder=../testdata/charset_size=134.txt \
+  --eval_interval_secs=300 --train_dir=$train_dir --eval_dir=$train_dir/eval &
 tensorboard --logdir=$train_dir
 
 

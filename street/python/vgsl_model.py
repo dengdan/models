@@ -77,13 +77,14 @@ def Train(train_dir,
       model = InitNetwork(train_data, 'train', initial_learning_rate,
                           final_learning_rate, learning_rate_halflife,
                           optimizer_type, num_preprocess_threads, reader)
-
+      
       # Create a Supervisor.  It will take care of initialization, summaries,
       # checkpoints, and recovery.
       #
       # When multiple replicas of this program are running, the first one,
       # identified by --task=0 is the 'chief' supervisor.  It is the only one
       # that takes case of initialization, etc.
+      another_saver = tf.train.Saver(max_to_keep = 1000);
       sv = tf.train.Supervisor(
           logdir=train_dir,
           is_chief=(task == 0),
@@ -103,7 +104,8 @@ def Train(train_dir,
               loss_, step = model.TrainAStep(sess)
               end = time.time()
               print "Step %d, Loss = %f, %.3f seconds used."%(step, loss_, end - start)
-              print "Step:", step, ", Loss =", loss_
+              if (step + 1)%100000 == 0:
+                another_saver.save(sess, util.io.join_path(train_dir + '/dumped_models', 'fsns-iter-%d.ckpt'%(step + 1)))
               if sv.coord.should_stop():
                 break
         except tf.errors.AbortedError as e:
@@ -281,8 +283,6 @@ class VGSLImageModel(object):
     self.layers = vgslspecs.VGSLSpecs(tf.constant([25]), tf.constant([25]), self.mode == 'train') 
     model_spec = '[([Lrys64 Lbx128][Lbys64 Lbx128][Lfys64 Lbx128])S3(3x0)2,3 Lfx128 Lrx128 S0(1x4)0,3 Do Lfx256]'
     lstm_after_dropout = self.layers.Build(pool2, model_spec)
-    import pdb
-    pdb.set_trace()
     ## output: O1c134
     self._AddOutputs(lstm_after_dropout, out_dims, out_func, num_classes)
     if self.mode == 'train':
