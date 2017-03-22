@@ -16,13 +16,12 @@
 """String network description language to define network layouts."""
 import re
 import time
-
+import vgslspecs
 import decoder
 import errorcounter as ec
 import shapes
 import tensorflow as tf
 import vgsl_input
-import vgslspecs
 import tensorflow.contrib.slim as slim
 from tensorflow.core.framework import summary_pb2
 from tensorflow.python.platform import tf_logging as logging
@@ -220,7 +219,6 @@ def InitNetwork(input_pattern,
 class VGSLImageModel(object):
   """Class that builds a tensor flow model for training or evaluation.
   """
-
   def __init__(self, mode, initial_learning_rate, final_learning_rate, halflife):
     """Constructs a VGSLImageModel.
 
@@ -270,63 +268,28 @@ class VGSLImageModel(object):
     self.global_step = tf.Variable(0, name='global_step', trainable=False)
     shape = vgsl_input.ImageShape(batch_size, y_size, x_size, depth);
     self.using_ctc = True
-
     images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
     self.labels = labels
     self.sparse_labels = sparse
     
+    # reshape S2(4x150)0,2: 150x600x3 -> 4x150x150x3
+    reshaped_image = shapes.transposing_reshape(images, 2, 4, 150, 0, 2, name = "reshape_image_into_4");# (4, 150, 150, 3)
+    conv1 = slim.conv2d(reshaped_image, 16, [5, 5], activation_fn = tf.nn.relu, scope= "conv1");#(4, 150, 150, 16)
+    pool1 = slim.max_pool2d(conv1, [2, 2], [2, 2],  padding='SAME',  scope="pool1"); #(4, 75, 75, 16)
+    conv2 = slim.conv2d(pool1, 64, [5, 5], activation_fn = tf.nn.relu, scope= "conv2");#(4, 75, 75, 64)
+    pool2 = slim.max_pool2d(conv2, [3, 3], [3, 3],  padding='SAME',  scope="pool2");
+    self.layers = vgslspecs.VGSLSpecs(tf.constant([25]), tf.constant([25]), self.mode == 'train') 
+    model_spec = '[([Lrys64 Lbx128][Lbys64 Lbx128][Lfys64 Lbx128])S3(3x0)2,3 Lfx128 Lrx128 S0(1x4)0,3 Do Lfx256]'
+    lstm_after_dropout = self.layers.Build(pool2, model_spec)
     import pdb
     pdb.set_trace()
-    # reshape S2(4x150)0,2: 150x600x3 -> 4x150x150x3
-    reshaped_image = shapes.transposing_reshape(images, 2, 4, 150, 0, 2, name = "reshape_image_into_4");   
-    conv1 = slim.conv2d(reshaped_image, 16, [5, 5], activation_fn = tf.nn.relu, scope= "conv1");
-    pool1 = slim.max_pool2d(conv1, [2, 2], [2, 2],  padding='SAME',  scope="pool1");
-    conv2 = slim.conv2d(reshaped_image, 64, [5, 5], activation_fn = tf.nn.relu, scope= "conv2");
-    pool2 = slim.max_pool2d(conv2, [3, 3], [3, 3],  padding='SAME',  scope="pool2");
-    
-    # LSTM
-    ## Text Line finding
-    ### line1: Lrys64 Lbx128
-    line1_backward_y = self._LSTMLayer(pool2, direction = 'backward', dim = 'y', summarize = True, depth = 64, name = 'line1_backward_y');
-    line1_bi_x = self._LSTMLayer(line1_backward_y, direction = 'bidirectional', dim = 'x', summarize = False, depth = 128,  name = 'line1_bi_x');
-    
-    ### line2: [Lbys64 Lbx128]
-    line2_backward_y = self._LSTMLayer(pool2, direction = 'backward', dim = 'y', summarize = True, depth = 64, name = 'line2_backward_y');
-    line2_forward_y = self._LSTMLayer(pool2, direction = 'forward', dim = 'y', summarize = True, depth = 64, name = 'line2_forward_y');
-    line2_bi_y = tf.concat(axis=3, values=[line2_forward_y, line2_backward_y], name='line2_bi_y');
-    line2_bi_x = self._LSTMLayer(line2_bi_y, direction = 'bidirectional', dim = 'x', summarize = False, depth = 128, name = 'line2_bi_x');
-    
-    
-    ### line2: [Lfys64 Lbx128]
-    line3_forward_y = self._LSTMLayer(pool2, direction = 'forward', dim = 'y', summarize = True, depth = 64, name = 'line3_backward_y');
-    line3_bi_x = self._LSTMLayer(line3_forward_y, direction = 'bidirectional', dim = 'x', summarize = False, depth = 128,  name = 'line3_bi_x');
-    
-    ## reshape S3(3x0)2, 3
-    lines = tf.concat(axis = 3, values=[line1_bi_x, line2_bi_x, line3_bi_x]); # 4x1x25x768
-    reshaped_lines = shapes.transposing_reshape(lines, 3, 3, -1, 2, 3, name = "reshape_lines"); # 4x1x75x256
-    
-    ## Character Position Normalization
-    ###Lfx128
-    lines_norm_fx = self._LSTMLayer(reshaped_lines, direction = 'forward', dim = 'x', summarize = False, depth = 128, name = 'lines_norm_fx');
-    ###Lrx128
-    lines_norm_rx = self._LSTMLayer(lines_norm_fx, direction = 'backward', dim = 'x', summarize = False, depth = 128, name = 'lines_norm_rx'); #4x75x128
-    
-    ##S0(1x4)0,3
-    reshaped_lines_norm = shapes.transposing_reshape(lines_norm_rx, 0, 1, 4, 0, 3, name = "reshaped_lines_norm"); # 4x1x75x512
-    
-    ## Dropout
-    dropout = slim.dropout(reshaped_lines_norm, 0.5, is_training=self.is_training, scope="dropout")
-    
-    ## Lfx256
-    lstm_after_dropout = self._LSTMLayer(dropout, direction = 'forward', dim = 'x', summarize = True, depth = 256, name = 'lstm_after_dropout');
-    
     ## output: O1c134
     self._AddOutputs(lstm_after_dropout, out_dims, out_func, num_classes)
     if self.mode == 'train':
       self._AddOptimizer(optimizer_type)
 
     # For saving the model across training and evaluation
-    self.saver = tf.train.Saver()
+    self.saver = tf.train.Saver(max_to_keep=1000)
 
   def TrainAStep(self, sess):
     """Runs a training step in the session.
@@ -496,6 +459,68 @@ class VGSLImageModel(object):
     self.train_op = opt.minimize(
         self.loss, global_step=self.global_step, name='train')
 
+  def _LSTMLayer(self, prev_layer, direction, dim, summarize, depth, name):
+    """Adds an LSTM layer with the given pre-parsed attributes.
+
+    Always maps 4-D to 4-D regardless of summarize.
+    Args:
+      prev_layer: Input tensor.
+      direction:  'forward' 'backward' or 'bidirectional'
+      dim:        'x' or 'y', dimension to consider as time.
+      summarize:  True if we are to return only the last timestep.
+      depth:      Output depth.
+      name:       Some string naming the op.
+
+    Returns:
+      Output tensor.
+    """
+    # If the target dimension is y, we need to transpose.
+    if dim == 'x':
+      lengths = self.GetLengths(2, 1)
+      inputs = prev_layer
+    else:
+      lengths = self.GetLengths(1, 1)
+      inputs = tf.transpose(prev_layer, [0, 2, 1, 3], name=name + '_ytrans_in')
+    input_batch = shapes.tensor_dim(inputs, 0)
+    num_slices = shapes.tensor_dim(inputs, 1)
+    num_steps = shapes.tensor_dim(inputs, 2)
+    input_depth = shapes.tensor_dim(inputs, 3)
+    # Reshape away the other dimension.
+    inputs = tf.reshape(
+        inputs, [-1, num_steps, input_depth], name=name + '_reshape_in')
+    # We need to replicate the lengths by the size of the other dimension, and
+    # any changes that have been made to the batch dimension.
+    tile_factor = tf.to_float(input_batch *
+                              num_slices) / tf.to_float(tf.shape(lengths)[0])
+    lengths = tf.tile(lengths, [tf.cast(tile_factor, tf.int32)])
+    lengths = tf.cast(lengths, tf.int64)
+    outputs = nn_ops.rnn_helper(
+        inputs,
+        lengths,
+        cell_type='lstm',
+        num_nodes=depth,
+        direction=direction,
+        name=name,
+        stddev=0.1)
+    # Output depth is doubled if bi-directional.
+    if direction == 'bidirectional':
+      output_depth = depth * 2
+    else:
+      output_depth = depth
+    # Restore the other dimension.
+    if summarize:
+      outputs = tf.slice(
+          outputs, [0, num_steps - 1, 0], [-1, 1, -1], name=name + '_sum_slice')
+      outputs = tf.reshape(
+          outputs, [input_batch, num_slices, 1, output_depth],
+          name=name + '_reshape_out')
+    else:
+      outputs = tf.reshape(
+          outputs, [input_batch, num_slices, num_steps, output_depth],
+          name=name + '_reshape_out')
+    if dim == 'y':
+      outputs = tf.transpose(outputs, [0, 2, 1, 3], name=name + '_ytrans_out')
+    return outputs
 
 def _PadLabels3d(logits, labels):
   """Pads or slices 3-d labels to match logits.

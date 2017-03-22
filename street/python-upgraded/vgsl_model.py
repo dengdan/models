@@ -312,6 +312,7 @@ class VGSLImageModel(object):
     self.using_ctc = out_func == 'c'
     images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(
         input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
+
     self.labels = labels
     self.sparse_labels = sparse
     self.layers = vgslspecs.VGSLSpecs(widths, heights, self.mode == 'train')
