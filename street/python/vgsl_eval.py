@@ -15,7 +15,8 @@
 """Model eval separate from training."""
 from tensorflow import app
 from tensorflow.python.platform import flags
-
+import setproctitle
+setproctitle.setproctitle('FSNS-fcn12s-eval')
 import vgsl_model
 
 flags.DEFINE_string('eval_dir', '/tmp/mdir/eval',

@@ -145,6 +145,6 @@ def _ImageProcessing(image_buffer, shape):
   image = tf.image.decode_png(image_buffer, channels=shape.depth)
   image.set_shape([shape.height, shape.width, shape.depth])
   image = tf.cast(image, tf.float32)
-  image = tf.subtract(image, 128.0)
-  image = tf.multiply(image, 1 / 100.0)
+#  image = tf.subtract(image, 128.0)
+#  image = tf.multiply(image, 1 / 100.0)
   return image

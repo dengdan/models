@@ -17,7 +17,7 @@ from tensorflow import app
 from tensorflow.python.platform import flags
 import vgsl_model
 import setproctitle
-setproctitle.setproctitle('fsns')
+setproctitle.setproctitle('FSNS-fcn12s')
 
 flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
 flags.DEFINE_string('train_dir', '/tmp/mdir',
