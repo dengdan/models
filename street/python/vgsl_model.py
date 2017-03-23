@@ -48,7 +48,9 @@ def Train(train_dir,
           learning_rate_halflife=160000,
           optimizer_type='Adam',
           num_preprocess_threads=1,
-          reader=None):
+          gm = 1.0,
+          reader=None 
+          ):
   """Testable trainer with no dependence on FLAGS.
 
   Args:
@@ -92,13 +94,15 @@ def Train(train_dir,
           save_summaries_secs=10,
           save_model_secs=30,
           recovery_wait_secs=5)
-
+      config = tf.ConfigProto()
+      config.gpu_options.per_process_gpu_memory_fraction = gm
+#      config.gpu_options.allow_growth = True
       step = 0
       while step < max_steps:
         try:
           # Get an initialized, and possibly recovered session.  Launch the
           # services: Checkpointing, Summaries, step counting.
-          with sv.managed_session(master) as sess:
+          with sv.managed_session(master, config = config) as sess:
             path = '/home/dengdan/temp_nfs/tensorflow/fcn12s'
             ckpt = tf.train.get_checkpoint_state(path)
             restorer.restore(sess, util.io.join_path(path, ckpt.model_checkpoint_path))
@@ -117,6 +121,7 @@ def Train(train_dir,
 
 def Eval(train_dir,
          eval_dir,
+         model_str, 
          eval_data,
          decoder_file,
          num_steps,
@@ -154,9 +159,11 @@ def Eval(train_dir,
   with tf.Graph().as_default():
     model = InitNetwork(eval_data, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
-
+    config = tf.ConfigProto()
+    #config.gpu_options.per_process_gpu_memory_fraction = gm
+    config.gpu_options.allow_growth = True
     while True:
-      sess = tf.Session('')
+      sess = tf.Session('', config = config)
       if graph_def_file is not None:
         # Write the eval version of the graph to a file for freezing.
         if not tf.gfile.Exists(graph_def_file):
