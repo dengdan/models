@@ -25,8 +25,9 @@ import vgsl_input
 import tensorflow.contrib.slim as slim
 from tensorflow.core.framework import summary_pb2
 from tensorflow.python.platform import tf_logging as logging
-
-
+from fcn12_vgg import FCN
+import numpy as np
+import util
 # Parameters for rate decay.
 # We divide the learning_rate_halflife by DECAY_STEPS_FACTOR and use DECAY_RATE
 # as the decay factor for the learning rate, ie we use the DECAY_STEPS_FACTORth
@@ -47,7 +48,9 @@ def Train(train_dir,
           learning_rate_halflife=160000,
           optimizer_type='Adam',
           num_preprocess_threads=1,
-          reader=None):
+          gm = 1.0,
+          reader=None 
+          ):
   """Testable trainer with no dependence on FLAGS.
 
   Args:
@@ -73,17 +76,17 @@ def Train(train_dir,
     device = '/cpu:0'
   with tf.Graph().as_default():
     with tf.device(device):
-
-      model = InitNetwork(train_data, 'train', initial_learning_rate,
-                          final_learning_rate, learning_rate_halflife,
-                          optimizer_type, num_preprocess_threads, reader)
-
       # Create a Supervisor.  It will take care of initialization, summaries,
       # checkpoints, and recovery.
       #
       # When multiple replicas of this program are running, the first one,
       # identified by --task=0 is the 'chief' supervisor.  It is the only one
       # that takes case of initialization, etc.
+      model = InitNetwork(train_data, 'train', initial_learning_rate,
+                          final_learning_rate, learning_rate_halflife,
+                          optimizer_type, num_preprocess_threads, reader)
+#      another_saver = tf.train.Saver(max_to_keep = 1000);
+      restorer = tf.train.Saver(model.vgg_vars)
       sv = tf.train.Supervisor(
           logdir=train_dir,
           is_chief=(task == 0),
@@ -91,19 +94,24 @@ def Train(train_dir,
           save_summaries_secs=10,
           save_model_secs=30,
           recovery_wait_secs=5)
-
+      config = tf.ConfigProto()
+      config.gpu_options.per_process_gpu_memory_fraction = gm
+#      config.gpu_options.allow_growth = True
       step = 0
       while step < max_steps:
         try:
           # Get an initialized, and possibly recovered session.  Launch the
           # services: Checkpointing, Summaries, step counting.
-          with sv.managed_session(master) as sess:
+          with sv.managed_session(master, config = config) as sess:
+            path = '/home/dengdan/temp_nfs/tensorflow/fcn12s'
+            ckpt = tf.train.get_checkpoint_state(path)
+            restorer.restore(sess, util.io.join_path(path, ckpt.model_checkpoint_path))
+            print 'restore vgg from', ckpt.model_checkpoint_path
             while step < max_steps:
               start = time.time()              
               loss_, step = model.TrainAStep(sess)
               end = time.time()
               print "Step %d, Loss = %f, %.3f seconds used."%(step, loss_, end - start)
-              print "Step:", step, ", Loss =", loss_
               if sv.coord.should_stop():
                 break
         except tf.errors.AbortedError as e:
@@ -113,6 +121,7 @@ def Train(train_dir,
 
 def Eval(train_dir,
          eval_dir,
+         model_str, 
          eval_data,
          decoder_file,
          num_steps,
@@ -150,9 +159,11 @@ def Eval(train_dir,
   with tf.Graph().as_default():
     model = InitNetwork(eval_data, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
-
+    config = tf.ConfigProto()
+    #config.gpu_options.per_process_gpu_memory_fraction = gm
+    config.gpu_options.allow_growth = True
     while True:
-      sess = tf.Session('')
+      sess = tf.Session('', config = config)
       if graph_def_file is not None:
         # Write the eval version of the graph to a file for freezing.
         if not tf.gfile.Exists(graph_def_file):
@@ -269,27 +280,38 @@ class VGSLImageModel(object):
     shape = vgsl_input.ImageShape(batch_size, y_size, x_size, depth);
     self.using_ctc = True
     images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
+    
     self.labels = labels
     self.sparse_labels = sparse
-    
     # reshape S2(4x150)0,2: 150x600x3 -> 4x150x150x3
     reshaped_image = shapes.transposing_reshape(images, 2, 4, 150, 0, 2, name = "reshape_image_into_4");# (4, 150, 150, 3)
-    conv1 = slim.conv2d(reshaped_image, 16, [5, 5], activation_fn = tf.nn.relu, scope= "conv1");#(4, 150, 150, 16)
-    pool1 = slim.max_pool2d(conv1, [2, 2], [2, 2],  padding='SAME',  scope="pool1"); #(4, 75, 75, 16)
-    conv2 = slim.conv2d(pool1, 64, [5, 5], activation_fn = tf.nn.relu, scope= "conv2");#(4, 75, 75, 64)
-    pool2 = slim.max_pool2d(conv2, [3, 3], [3, 3],  padding='SAME',  scope="pool2");
-    self.layers = vgslspecs.VGSLSpecs(tf.constant([25]), tf.constant([25]), self.mode == 'train') 
+    vgg = FCN()
+    vgg.build(reshaped_image);
+    self.input_images = reshaped_image
+    excluded_vars = [] 
+    for v in tf.trainable_variables():
+        excluded_vars.append(v);
+    self.vgg = vgg;
+    self.vgg_vars = excluded_vars;
+    self.layers = vgslspecs.VGSLSpecs(tf.constant([25]), tf.constant([25]), self.mode == 'train')
     model_spec = '[([Lrys64 Lbx128][Lbys64 Lbx128][Lfys64 Lbx128])S3(3x0)2,3 Lfx128 Lrx128 S0(1x4)0,3 Do Lfx256]'
-    lstm_after_dropout = self.layers.Build(pool2, model_spec)
-    import pdb
-    pdb.set_trace()
+    lstm_after_dropout = self.layers.Build(vgg.process_output, model_spec)
+    
     ## output: O1c134
     self._AddOutputs(lstm_after_dropout, out_dims, out_func, num_classes)
+    
     if self.mode == 'train':
-      self._AddOptimizer(optimizer_type)
+      var_list = [];
+      for v in tf.trainable_variables():
+        if excluded_vars.count(v) > 0:
+            print '%s is not going to be trained.'%(v.name)
+            continue
 
+        print '%s is going to be trained.'%(v.name)
+        var_list.append(v);
+      self._AddOptimizer(optimizer_type, var_list)
     # For saving the model across training and evaluation
-    self.saver = tf.train.Saver(max_to_keep=1000)
+    self.saver = tf.train.Saver(max_to_keep = 5000)
 
   def TrainAStep(self, sess):
     """Runs a training step in the session.
@@ -298,8 +320,12 @@ class VGSLImageModel(object):
       sess: Session in which to train the model.
     Returns:
       loss, global_step.
+    _, loss, step, score, I = sess.run([self.train_op, self.loss, self.global_step, self.vgg.pred_score, self.input_images])
+    for idx, img in enumerate(I):
+        util.plt.show_images(images = [np.uint8(img), score[idx, ..., 1]], axis_off = True, path = '~/temp_nfs/no-use/%d_%f.jpg'%(idx, time.time()), show = False, save = True)
     """
     _, loss, step = sess.run([self.train_op, self.loss, self.global_step])
+
     return loss, step
 
   def Restore(self, checkpoint_path, sess):
@@ -431,7 +457,7 @@ class VGSLImageModel(object):
       raise ValueError('Logistic not yet supported!')
     return tf.reduce_sum(cross_entropy)
 
-  def _AddOptimizer(self, optimizer_type):
+  def _AddOptimizer(self, optimizer_type, var_list = None):
     """Adds an optimizer with learning rate decay to minimize self.loss.
 
     Args:
@@ -456,9 +482,11 @@ class VGSLImageModel(object):
       raise ValueError('Invalid optimizer type: ' + optimizer_type)
     tf.summary.scalar('learn_rate', learn_rate_dec)
 
-    self.train_op = opt.minimize(
-        self.loss, global_step=self.global_step, name='train')
-
+    if var_list is not None:
+        self.train_op = opt.minimize(self.loss, global_step=self.global_step, name='train', var_list = var_list)
+    else:
+        self.train_op = opt.minimize(self.loss, global_step=self.global_step, name='train')
+        
   def _LSTMLayer(self, prev_layer, direction, dim, summarize, depth, name):
     """Adds an LSTM layer with the given pre-parsed attributes.
 
