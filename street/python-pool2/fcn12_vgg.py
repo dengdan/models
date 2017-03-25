@@ -116,7 +116,7 @@ class FCN:
                                              num_classes=num_classes,
                                              debug=debug, name='upscore_to_pool2',
                                              ksize=4, stride=2)
-        self.process_output = tf.concat([self.pool2, self.upscore_to_conv3_3], 3)
+        self.process_output = tf.concat([self.pool2, self.upscore_to_pool2], 3)
         output_shape = [d.value for d in self.pool2.shape]
         output_shape[-1] += num_classes
         self.process_output.set_shape(output_shape)
