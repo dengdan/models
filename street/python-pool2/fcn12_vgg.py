@@ -110,8 +110,6 @@ class FCN:
                                              num_classes=num_classes)
         self.fuse_pool3 = tf.add(self.upscore4, self.score_pool3)
         
-        
-
         self.upscore_to_pool2 = self._upscore_layer(self.fuse_pool3,
                                              shape=tf.shape(self.pool2),
                                              num_classes=num_classes,

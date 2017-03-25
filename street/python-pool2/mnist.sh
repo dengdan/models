@@ -1,9 +1,9 @@
-export CUDA_VISIBLE_DEVICES=0
+#export LD_PRELOAD=/usr/lib/libtcmalloc.so.4
+export CUDA_VISIBLE_DEVICES=1
 
 dump_dir=/home/dengdan/temp_nfs/
 name=fsns-fcn12s-145k-pool2
 train_dir=$dump_dir/$name
-#rm -rf $train_dir
 python vgsl_train.py --max_steps=100000000 --train_data=../data/train* \
   --train_dir=$train_dir --proc_name=$name --gm=0.1
 exit
@@ -15,4 +15,5 @@ python vgsl_eval.py --num_steps=1000 \
   --proc_name=$name
 
 tensorboard --logdir=$train_dir
+
 

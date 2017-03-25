@@ -15,4 +15,3 @@ python vgsl_eval.py --num_steps=1000 \
   --proc_name=$name
 
 tensorboard --logdir=$train_dir
-
