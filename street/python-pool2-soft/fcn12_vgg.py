@@ -110,14 +110,23 @@ class FCN:
                                              num_classes=num_classes)
         self.fuse_pool3 = tf.add(self.upscore4, self.score_pool3)
         
-        self.upscore_to_pool2 = self._upscore_layer(self.fuse_pool3,
+        self.pred_score_fuse_pool3 = tf.nn.softmax(self.fuse_pool3);
+        
+        self.upscore_to_pool2 = self._upscore_layer(self.pred_score_fuse_pool3,
                                              shape=tf.shape(self.pool2),
                                              num_classes=num_classes,
                                              debug=debug, name='upscore_to_pool2',
                                              ksize=4, stride=2)
-        self.process_output = tf.concat([self.pool2, self.upscore_to_pool2], 3)
+        pool2_shape = self.pool2.shape;
+        self.pool2_reshaped = tf.reshape(self.pool2, shape = [pool2_shape[0].value, -1, pool2_shape[-1].value]);
+        self.pool2_l2_norm_reshaped = tf.nn.l2_normalize(self.pool2_reshaped, dim = 1);
+        self.pool2_l2_norm = tf.reshape(self.pool2_l2_norm_reshaped, pool2_shape);
+        
+        self.text_score = tf.expand_dims(self.upscore_to_pool2[..., 1], 3)
+        self.process_output = tf.concat([self.pool2_l2_norm, self.text_score], 3)
+        
         output_shape = [d.value for d in self.pool2.shape]
-        output_shape[-1] += num_classes
+        output_shape[-1] += 1
         self.process_output.set_shape(output_shape)
 
         self.upscore8 = self._upscore_layer(self.fuse_pool3,

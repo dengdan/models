@@ -95,8 +95,10 @@ def Train(train_dir,
           save_model_secs=300,
           recovery_wait_secs=5)
       config = tf.ConfigProto()
-      config.gpu_options.per_process_gpu_memory_fraction = gm
-#      config.gpu_options.allow_growth = True
+      if gm > 0:
+          config.gpu_options.per_process_gpu_memory_fraction = gm
+      else:
+          config.gpu_options.allow_growth = True
       step = 0
       while step < max_steps:
         try:

@@ -92,7 +92,7 @@ def Train(train_dir,
           is_chief=(task == 0),
           saver=model.saver,
           save_summaries_secs=10,
-          save_model_secs=30,
+          save_model_secs=300,
           recovery_wait_secs=5)
       config = tf.ConfigProto()
       if gm > 0:
@@ -162,8 +162,8 @@ def Eval(train_dir,
     model = InitNetwork(eval_data, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
     config = tf.ConfigProto()
-    #config.gpu_options.per_process_gpu_memory_fraction = gm
-    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.2
+#    config.gpu_options.allow_growth = True
     while True:
       sess = tf.Session('', config = config)
       if graph_def_file is not None:

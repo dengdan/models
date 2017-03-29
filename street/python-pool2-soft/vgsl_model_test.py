@@ -15,8 +15,8 @@
 """Tests for vgsl_model."""
 import os
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 import vgsl_input
 import vgsl_model
 

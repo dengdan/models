@@ -14,8 +14,8 @@
 # ==============================================================================
 """Tests for vgslspecs."""
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 import vgslspecs
 
 
