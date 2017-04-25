@@ -92,7 +92,7 @@ def Train(train_dir,
           is_chief=(task == 0),
           saver=model.saver,
           save_summaries_secs=10,
-          save_model_secs=30,
+          save_model_secs=300,
           recovery_wait_secs=5)
       config = tf.ConfigProto()
       if gm > 0:
