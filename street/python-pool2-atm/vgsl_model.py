@@ -75,7 +75,7 @@ def Train(train_dir,
   else:
     device = '/cpu:0'
   with tf.Graph().as_default():
-    with tf.device(device):
+    #with tf.device(device):
       # Create a Supervisor.  It will take care of initialization, summaries,
       # checkpoints, and recovery.
       #
@@ -105,10 +105,10 @@ def Train(train_dir,
           # Get an initialized, and possibly recovered session.  Launch the
           # services: Checkpointing, Summaries, step counting.
           with sv.managed_session(master, config = config) as sess:
-            path = '/home/dengdan/temp_nfs/tensorflow/fcn12s'
-            ckpt = tf.train.get_checkpoint_state(path)
-            restorer.restore(sess, util.io.join_path(path, ckpt.model_checkpoint_path))
-            print 'restore vgg from', ckpt.model_checkpoint_path
+#            path = '/home/dengdan/temp_nfs/tensorflow/fcn12s'
+#            ckpt = tf.train.get_checkpoint_state(path)
+#            restorer.restore(sess, util.io.join_path(path, ckpt.model_checkpoint_path))
+#            print 'restore vgg from', ckpt.model_checkpoint_path
             while step < max_steps:
               start = time.time()              
               loss_, step = model.TrainAStep(sess)
@@ -162,8 +162,8 @@ def Eval(train_dir,
     model = InitNetwork(eval_data, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.2
-#    config.gpu_options.allow_growth = True
+#    config.gpu_options.per_process_gpu_memory_fraction = 0.2
+    config.gpu_options.allow_growth = True
     while True:
       sess = tf.Session('', config = config)
       if graph_def_file is not None:
