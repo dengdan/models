@@ -74,7 +74,7 @@ def Train(train_dir,
   else:
     device = '/cpu:0'
   with tf.Graph().as_default():
-    with tf.device(device):
+    #with tf.device(device):
 
       model = InitNetwork(train_data, model_str, 'train', initial_learning_rate,
                           final_learning_rate, learning_rate_halflife,

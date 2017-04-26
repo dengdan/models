@@ -75,7 +75,7 @@ def Train(train_dir,
   else:
     device = '/cpu:0'
   with tf.Graph().as_default():
-    with tf.device(device):
+    #with tf.device(device):
       # Create a Supervisor.  It will take care of initialization, summaries,
       # checkpoints, and recovery.
       #
@@ -95,10 +95,10 @@ def Train(train_dir,
           save_model_secs=300,
           recovery_wait_secs=5)
       config = tf.ConfigProto()
-      if gm > 0:
-          config.gpu_options.per_process_gpu_memory_fraction = gm
-      else:
-          config.gpu_options.allow_growth = True
+     # if gm > 0:
+     #     config.gpu_options.per_process_gpu_memory_fraction = gm
+      #else:
+      config.gpu_options.allow_growth = True
       step = 0
       while step < max_steps:
         try:
