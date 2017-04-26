@@ -91,18 +91,24 @@ def Train(train_dir,
           is_chief=(task == 0),
           saver=model.saver,
           save_summaries_secs=10,
-          save_model_secs=30,
+          save_model_secs=300,
           recovery_wait_secs=5)
-
+      config = tf.ConfigProto()
+     # if gm > 0:
+     #     config.gpu_options.per_process_gpu_memory_fraction = gm
+      #else:
+      config.gpu_options.allow_growth = True
       step = 0
       while step < max_steps:
         try:
           # Get an initialized, and possibly recovered session.  Launch the
           # services: Checkpointing, Summaries, step counting.
-          with sv.managed_session(master) as sess:
+          with sv.managed_session(master, config = config) as sess:
             while step < max_steps:
+              _start = time.time()
               loss_, step = model.TrainAStep(sess)
-              print "Step:", step, ", Loss =", loss_
+              _end = time.time()
+              print "Step:", step, ", Loss =", loss_, "Time = ", (_end - _start)
               if sv.coord.should_stop():
                 break
         except tf.errors.AbortedError as e:
@@ -150,9 +156,10 @@ def Eval(train_dir,
   with tf.Graph().as_default():
     model = InitNetwork(eval_data, model_str, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
-
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
     while True:
-      sess = tf.Session('')
+      sess = tf.Session('', config = config)
       if graph_def_file is not None:
         # Write the eval version of the graph to a file for freezing.
         if not tf.gfile.Exists(graph_def_file):
