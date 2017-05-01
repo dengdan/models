@@ -42,7 +42,6 @@ class FCN:
         # Convert RGB to BGR
 
         with tf.name_scope('Processing'):
-        
             red, green, blue = tf.split(rgb, 3, 3)
             # assert red.get_shape().as_list()[1:] == [224, 224, 1]
             # assert green.get_shape().as_list()[1:] == [224, 224, 1]
@@ -108,7 +107,6 @@ class FCN:
         self.score_pool3 = self._score_layer(self.pool3, "score_pool3",
                                              num_classes=num_classes)
         self.fuse_pool3 = tf.add(self.upscore4, self.score_pool3)
-        
         self.pred_score_fuse_pool3 = tf.nn.softmax(self.fuse_pool3);
         
         self.upscore_to_pool2 = self._upscore_layer(self.pred_score_fuse_pool3,
@@ -125,7 +123,8 @@ class FCN:
         
         
         self.text_score = self.upscore_to_pool2[..., 1]
-        
+        self.text_score = tf.identity(self.text_score, name = 'text_score')
+        _activation_summary(self.text_score, real = True)
         self.text_score_elw = []
         for image_index in range(pool2_shape[0]):
             scores = []
@@ -347,7 +346,7 @@ class FCN:
 
 
 
-def _activation_summary(x):
+def _activation_summary(x, real = False):
     """Helper to create summaries for activations.
 
     Creates a summary that provides a histogram of activations.
@@ -358,7 +357,9 @@ def _activation_summary(x):
     Returns:
       nothing
     """
-    return
+    if not real:
+        return
+    #return
     # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
     # session. This helps the clarity of presentation on tensorboard.
     tensor_name = x.op.name

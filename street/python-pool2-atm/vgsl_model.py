@@ -305,9 +305,9 @@ class VGSLImageModel(object):
     if self.mode == 'train':
       var_list = [];
       for v in tf.trainable_variables():
-#        if excluded_vars.count(v) > 0:
-#            print '%s is not going to be trained.'%(v.name)
-#            continue
+        if excluded_vars.count(v) > 0:
+            print '%s is not going to be trained.'%(v.name)
+            continue
 
         print '%s is going to be trained.'%(v.name)
         var_list.append(v);
@@ -322,9 +322,11 @@ class VGSLImageModel(object):
       sess: Session in which to train the model.
     Returns:
       loss, global_step.
-    _, loss, step, score, I = sess.run([self.train_op, self.loss, self.global_step, self.vgg.pred_score, self.input_images])
+    _, loss, step, score, I = sess.run([self.train_op, self.loss, self.global_step, self.vgg.text_score, self.input_images])
     for idx, img in enumerate(I):
-        util.plt.show_images(images = [np.uint8(img), score[idx, ..., 1]], axis_off = True, path = '~/temp_nfs/no-use/%d_%f.jpg'%(idx, time.time()), show = False, save = True)
+        import pdb
+        pdb.set_trace()
+        util.plt.show_images(images = [np.uint8(img), score[idx, ...]], axis_off = True, path = '~/temp_nfs/no-use/%d_%f.jpg'%(idx, time.time()), show = False, save = True)
     """
     _, loss, step = sess.run([self.train_op, self.loss, self.global_step])
 
