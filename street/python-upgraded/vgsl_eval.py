@@ -15,7 +15,7 @@
 """Model eval separate from training."""
 from tensorflow import app
 from tensorflow.python.platform import flags
-import setproctitle
+
 import vgsl_model
 
 flags.DEFINE_string('eval_dir', '/tmp/mdir/eval',
@@ -34,13 +34,12 @@ flags.DEFINE_integer('eval_interval_secs', 60,
                      'Time interval between eval runs.')
 flags.DEFINE_string('eval_data', None, 'Evaluation data filepattern')
 flags.DEFINE_string('decoder', None, 'Charset decoder')
-flags.DEFINE_string('proc_name', 'FSNS-train', 'process name')
+
 FLAGS = flags.FLAGS
 
 
 def main(argv):
   del argv
-  setproctitle.setproctitle(FLAGS.proc_name + '-eval')
   vgsl_model.Eval(FLAGS.train_dir, FLAGS.eval_dir, FLAGS.model_str,
                   FLAGS.eval_data, FLAGS.decoder, FLAGS.num_steps,
                   FLAGS.graph_def_file, FLAGS.eval_interval_secs)

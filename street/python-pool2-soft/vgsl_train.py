@@ -27,8 +27,8 @@ flags.DEFINE_integer('task', 0, 'Task id of the replica running the training.')
 flags.DEFINE_integer('ps_tasks', 0, 'Number of tasks in the ps job.'
                      'If 0 no ps job is used.')
 flags.DEFINE_string('train_data', None, 'Training data filepattern')
-flags.DEFINE_float('initial_learning_rate', 0.00002, 'Initial learning rate')
-flags.DEFINE_float('final_learning_rate', 0.00002, 'Final learning rate')
+flags.DEFINE_float('initial_learning_rate', 0.0001, 'Initial learning rate')
+flags.DEFINE_float('final_learning_rate', 0.0001, 'Final learning rate')
 flags.DEFINE_integer('learning_rate_halflife', 1600000,
                      'Halflife of learning rate')
 flags.DEFINE_string('optimizer_type', 'Adam',

@@ -1,0 +1,274 @@
+================================================================================
+Input tree: 'python'
+================================================================================
+--------------------------------------------------------------------------------
+Processing file 'python/vgsl_train.py'
+ outputting to 'python-upgraded/vgsl_train.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/shapes_test.py'
+ outputting to 'python-upgraded/shapes_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/nn_ops.py'
+ outputting to 'python-upgraded/nn_ops.py'
+--------------------------------------------------------------------------------
+
+'python/nn_ops.py' Line 227
+--------------------------------------------------------------------------------
+
+Changed 'tf.zeros_initializer' to 'tf.zeros_initializer()'
+
+    Old:             initializer=tf.zeros_initializer,
+                                 ~~~~~~~~~~~~~~~~~~~~  
+    New:             initializer=tf.zeros_initializer(),
+                                 ~~~~~~~~~~~~~~~~~~~~~~  
+
+'python/nn_ops.py' Line 239
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:     prev = tf.reshape(prev, tf.pack([batch_size, num_frames, 4, num_nodes]))
+                                     ~~~~~~~                                          
+    New:     prev = tf.reshape(prev, tf.stack([batch_size, num_frames, 4, num_nodes]))
+                                     ~~~~~~~~                                          
+
+'python/nn_ops.py' Line 241
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:       state = tf.fill(tf.pack([batch_size, num_nodes]), 0.0)
+                               ~~~~~~~                                
+    New:       state = tf.fill(tf.stack([batch_size, num_nodes]), 0.0)
+                               ~~~~~~~~                                
+
+'python/nn_ops.py' Line 243
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:       memory = tf.fill(tf.pack([batch_size, num_nodes]), 0.0)
+                                ~~~~~~~                                
+    New:       memory = tf.fill(tf.stack([batch_size, num_nodes]), 0.0)
+                                ~~~~~~~~                                
+
+'python/nn_ops.py' Line 249
+--------------------------------------------------------------------------------
+
+ERROR: tf.reverse has had its argument semantics changed
+significantly the converter cannot detect this reliably, so youneed to inspect this usage manually.
+
+
+    Old:         out = tf.reverse(out, [False, True, False])
+                       ~~~~~~~~~~                            
+    New:         out = tf.reverse(out, [False, True, False])
+                       ~~~~~~~~~~                            
+
+'python/nn_ops.py' Line 186
+--------------------------------------------------------------------------------
+
+ERROR: tf.reverse has had its argument semantics changed
+significantly the converter cannot detect this reliably, so youneed to inspect this usage manually.
+
+
+    Old:         inp = tf.reverse(inp, [False, True, False])
+                       ~~~~~~~~~~                            
+    New:         inp = tf.reverse(inp, [False, True, False])
+                       ~~~~~~~~~~                            
+
+'python/nn_ops.py' Line 220
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:     prev = tf.reshape(inp, tf.pack([batch_size * num_frames, num_prev]))
+                                    ~~~~~~~                                       
+    New:     prev = tf.reshape(inp, tf.stack([batch_size * num_frames, num_prev]))
+                                    ~~~~~~~~                                       
+
+'python/nn_ops.py' Line 95
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       out = tf.concat(2, [forward, backward])
+                                                       
+    New:       out = tf.concat(axis=2, values=[forward, backward])
+                               ~~~~~   ~~~~~~~                     
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/vgslspecs_test.py'
+ outputting to 'python-upgraded/vgslspecs_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/vgsl_model.py'
+ outputting to 'python-upgraded/vgsl_model.py'
+--------------------------------------------------------------------------------
+
+'python/vgsl_model.py' Line 372
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.scalar_summary' to 'tf.summary.scalar'
+
+    Old:       tf.scalar_summary('loss', self.loss, name='loss')
+               ~~~~~~~~~~~~~~~~~                                 
+    New:       tf.summary.scalar('loss', self.loss, name='loss')
+               ~~~~~~~~~~~~~~~~~                                 
+
+'python/vgsl_model.py' Line 150
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.SummaryWriter' to 'tf.summary.FileWriter'
+
+    Old:     sw = tf.train.SummaryWriter(eval_dir)
+                  ~~~~~~~~~~~~~~~~~~~~~~           
+    New:     sw = tf.summary.FileWriter(eval_dir)
+                  ~~~~~~~~~~~~~~~~~~~~~           
+
+'python/vgsl_model.py' Line 487
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.scalar_summary' to 'tf.summary.scalar'
+
+    Old:     tf.scalar_summary('learn_rate', learn_rate_dec, name='lr_summ')
+             ~~~~~~~~~~~~~~~~~                                               
+    New:     tf.summary.scalar('learn_rate', learn_rate_dec, name='lr_summ')
+             ~~~~~~~~~~~~~~~~~                                               
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/vgslspecs.py'
+ outputting to 'python-upgraded/vgslspecs.py'
+--------------------------------------------------------------------------------
+
+'python/vgslspecs.py' Line 152
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.mul' to 'tf.multiply'
+
+    Old:       lengths = tf.mul(lengths, tf.cast(factor, tf.float32))
+                         ~~~~~~                                       
+    New:       lengths = tf.multiply(lengths, tf.cast(factor, tf.float32))
+                         ~~~~~~~~~~~                                       
+
+'python/vgslspecs.py' Line 345
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.mul' to 'tf.multiply'
+
+    Old:         self.reduction_factors[i] = tf.div(tf.mul(factor1, factor2), divisor)
+                                                    ~~~~~~                             
+    New:         self.reduction_factors[i] = tf.div(tf.multiply(factor1, factor2), divisor)
+                                                    ~~~~~~~~~~~                             
+
+'python/vgslspecs.py' Line 404
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       return tf.concat(3, [fwd, back], name=name + '_concat'), m.end()
+                                                                                
+    New:       return tf.concat(axis=3, values=[fwd, back], name=name + '_concat'), m.end()
+                                ~~~~~   ~~~~~~~                                             
+
+'python/vgslspecs.py' Line 238
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:     return tf.concat(num_dims - 1, layers), index + 1
+                                                               
+    New:     return tf.concat(axis=num_dims - 1, values=layers), index + 1
+                              ~~~~~              ~~~~~~~                   
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/vgsl_model_test.py'
+ outputting to 'python-upgraded/vgsl_model_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/decoder.py'
+ outputting to 'python-upgraded/decoder.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/decoder_test.py'
+ outputting to 'python-upgraded/decoder_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/errorcounter.py'
+ outputting to 'python-upgraded/errorcounter.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/vgsl_eval.py'
+ outputting to 'python-upgraded/vgsl_eval.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/vgsl_input.py'
+ outputting to 'python-upgraded/vgsl_input.py'
+--------------------------------------------------------------------------------
+
+'python/vgsl_input.py' Line 82
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.image_summary' to 'tf.summary.image'
+
+    Old:   tf.image_summary('Images', images)
+           ~~~~~~~~~~~~~~~~                   
+    New:   tf.summary.image('Images', images)
+           ~~~~~~~~~~~~~~~~                   
+
+'python/vgsl_input.py' Line 148
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.sub' to 'tf.subtract'
+
+    Old:   image = tf.sub(image, 128.0)
+                   ~~~~~~               
+    New:   image = tf.subtract(image, 128.0)
+                   ~~~~~~~~~~~               
+
+'python/vgsl_input.py' Line 149
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.mul' to 'tf.multiply'
+
+    Old:   image = tf.mul(image, 1 / 100.0)
+                   ~~~~~~                   
+    New:   image = tf.multiply(image, 1 / 100.0)
+                   ~~~~~~~~~~~                   
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/errorcounter_test.py'
+ outputting to 'python-upgraded/errorcounter_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'python/shapes.py'
+ outputting to 'python-upgraded/shapes.py'
+--------------------------------------------------------------------------------
+
+
