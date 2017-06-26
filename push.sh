@@ -1,3 +1,4 @@
 git add . --all
 git commit -m "..."
-git push origin
+git push -u mine  master
+

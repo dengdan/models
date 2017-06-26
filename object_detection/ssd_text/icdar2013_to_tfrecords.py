@@ -92,5 +92,5 @@ if __name__ == "__main__":
     
     output_dir = util.io.get_absolute_path('~/dataset/models-object-detection/ICDAR/')
     util.io.mkdir(output_dir);
-    cvt_to_tfrecords(output_path = util.io.join_path(output_dir, 'icdar2013_train.tfrecords'), data_path = training_data_dir, gt_path = training_gt_dir)
-#    cvt_to_tfrecords(output_path = util.io.join_path(output_dir,  'icdar2013_test.tfrecords'), data_path = test_data_dir, gt_path = test_gt_dir)
+    #cvt_to_tfrecords(output_path = util.io.join_path(output_dir, 'icdar2013_train.tfrecords'), data_path = training_data_dir, gt_path = training_gt_dir)
+    cvt_to_tfrecords(output_path = util.io.join_path(output_dir,  'icdar2013_test.tfrecords'), data_path = test_data_dir, gt_path = test_gt_dir)
