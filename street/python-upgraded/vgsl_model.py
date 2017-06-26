@@ -74,7 +74,8 @@ def Train(train_dir,
   else:
     device = '/cpu:0'
   with tf.Graph().as_default():
-    with tf.device(device):
+    #with tf.device(device):
+
       model = InitNetwork(train_data, model_str, 'train', initial_learning_rate,
                           final_learning_rate, learning_rate_halflife,
                           optimizer_type, num_preprocess_threads, reader)
@@ -90,17 +91,24 @@ def Train(train_dir,
           is_chief=(task == 0),
           saver=model.saver,
           save_summaries_secs=10,
-          save_model_secs=30,
+          save_model_secs=300,
           recovery_wait_secs=5)
-
+      config = tf.ConfigProto()
+     # if gm > 0:
+     #     config.gpu_options.per_process_gpu_memory_fraction = gm
+      #else:
+      config.gpu_options.allow_growth = True
       step = 0
       while step < max_steps:
         try:
           # Get an initialized, and possibly recovered session.  Launch the
           # services: Checkpointing, Summaries, step counting.
-          with sv.managed_session(master) as sess:
+          with sv.managed_session(master, config = config) as sess:
             while step < max_steps:
-              _, step = model.TrainAStep(sess)
+              _start = time.time()
+              loss_, step = model.TrainAStep(sess)
+              _end = time.time()
+              print "Step:", step, ", Loss =", loss_, "Time = ", (_end - _start)
               if sv.coord.should_stop():
                 break
         except tf.errors.AbortedError as e:
@@ -148,9 +156,10 @@ def Eval(train_dir,
   with tf.Graph().as_default():
     model = InitNetwork(eval_data, model_str, 'eval', reader=reader)
     sw = tf.summary.FileWriter(eval_dir)
-
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
     while True:
-      sess = tf.Session('')
+      sess = tf.Session('', config = config)
       if graph_def_file is not None:
         # Write the eval version of the graph to a file for freezing.
         if not tf.gfile.Exists(graph_def_file):
@@ -310,6 +319,7 @@ class VGSLImageModel(object):
     self.using_ctc = out_func == 'c'
     images, heights, widths, labels, sparse, _ = vgsl_input.ImageInput(
         input_pattern, num_preprocess_threads, shape, self.using_ctc, reader)
+
     self.labels = labels
     self.sparse_labels = sparse
     self.layers = vgslspecs.VGSLSpecs(widths, heights, self.mode == 'train')
@@ -319,7 +329,7 @@ class VGSLImageModel(object):
       self._AddOptimizer(optimizer_type)
 
     # For saving the model across training and evaluation
-    self.saver = tf.train.Saver()
+    self.saver = tf.train.Saver(max_to_keep=5)
 
   def TrainAStep(self, sess):
     """Runs a training step in the session.
@@ -442,7 +452,7 @@ class VGSLImageModel(object):
       ctc_input = tf.transpose(logits, [1, 0, 2])
       # Compute the widths of each batch element from the input widths.
       widths = self.layers.GetLengths(dim=2, factor=height_in)
-      cross_entropy = tf.nn.ctc_loss(ctc_input, self.sparse_labels, widths)
+      cross_entropy = tf.nn.ctc_loss(self.sparse_labels, ctc_input, widths)
     elif out_func == 's':
       if out_dims == 2:
         self.labels = _PadLabels3d(logits, self.labels)
